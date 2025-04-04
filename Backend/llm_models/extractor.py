@@ -1,5 +1,6 @@
 import tempfile
-from langchain_ollama import ChatOllama
+# from langchain_ollama import ChatOllama
+from langchain_groq import ChatGroq
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -14,7 +15,9 @@ from typing import Dict, Any
 logging.basicConfig(level=logging.INFO)
 
 # Initialize AI Model
-model = ChatOllama(model="gemma:7b", temperature=0.3)  # Lower temperature for more deterministic output
+# model = ChatOllama(model="gemma:7b", temperature=0.3)  
+model = ChatGroq(model="llama3-8b-8192", temperature=0.3)
+
 parser = StrOutputParser()
 
 def extract_contact_info(text: str) -> tuple[list[str], list[str]]:

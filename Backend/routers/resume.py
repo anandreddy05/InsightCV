@@ -4,11 +4,12 @@ from database import get_db
 from llm_models.extractor import extract_resume_data
 from .users import get_current_user
 from typing import Annotated, List, Dict, Optional
-from models import Resume, User
+from models import Resume, User, UserRole
 from pydantic import BaseModel, ConfigDict, Field
 import json
 import os
 from datetime import datetime
+from .users import role_required
 
 router = APIRouter(
     prefix="/resume",
@@ -16,6 +17,8 @@ router = APIRouter(
 )
 
 db_dependency = Annotated[Session, Depends(get_db)]
+user_dependency = Annotated[dict,Depends(get_current_user)]
+
 
 UPLOAD_DIR = "uploaded/resumes"  
 
@@ -45,6 +48,16 @@ class ResumeResponse(BaseModel):
     education: List[EducationItem] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
 
+
+@router.get("/get_resume")
+async def get_user_resumes(
+    db:db_dependency,
+    user: User = Depends(get_current_user)
+):
+    resume_instance = db.query(Resume).filter(Resume.user_id == user.id).all()
+    if not resume_instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Resume Not Found")
+    return resume_instance
 
 @router.post("/upload_resume", response_model=ResumeResponse, status_code=status.HTTP_201_CREATED)
 async def upload_resume(
@@ -99,3 +112,30 @@ async def upload_resume(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error processing resume: {str(e)}")
+
+@router.delete(
+    "/delete-resume/{resume_id}",
+    dependencies=[Depends(role_required(UserRole.user))],
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_resume(
+    db: db_dependency,
+    resume_id: int,
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+    resume_instance = db.query(Resume).filter(Resume.id == resume_id).first()
+
+    if not resume_instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    if resume_instance.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to delete this resume"
+        )
+
+    db.delete(resume_instance)
+    db.commit()
