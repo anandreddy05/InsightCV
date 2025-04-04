@@ -52,54 +52,80 @@ def extract_resume_data(file) -> Dict[str, Any]:
     emails, phones = extract_contact_info(content)
     logging.info(f"Extracted emails: {emails}, phones: {phones}")
 
-    # Improved AI Model Prompt
     prompt = PromptTemplate(
-        template="""
-        Analyze the following resume text and extract structured information in JSON format:
+    template="""
+    Analyze the following resume text and extract structured information in JSON format:
 
-        Resume Text:
-        {text}
+    Resume Text:
+    {text}
 
-        Extract the following information:
-        - Full name (string)
-        - Skills (list of strings)
-        - Work experience (list of objects with company, role, years)
-        - Projects (list of objects with project_name, tech_stack, description)
-        - Education (list of objects with institution, degree, years, cgpa)
+    Extract the following information:
+    - Full name (string)
+    - Skills (list of strings)
+    - Work experience (list of objects with company, role, years)
+    - Projects (list of objects with project_name, tech_stack, description)
+    - Education (list of objects with institution, degree, years, cgpa/marks/percentage)
 
-        IMPORTANT: Return ONLY a valid JSON object. Do not include any additional text or explanations.
-        The JSON should follow this exact structure:
+    IMPORTANT: 
+    - Return ONLY a valid JSON object. Do not include any additional text or explanations. 
+    - If education details contain CGPA, percentage, or marks, include it under the `"cgpa"` field.
+    - If CGPA is missing but marks/percentage exist, include that instead.
+    - If none of these are available, return `"N/A"`.
+
+    The JSON should follow this exact structure:
+    {{
+        "name": "string",
+        "skills": ["list", "of", "strings"],
+        "experience": [
+            {{
+                "company": "string",
+                "role": "string",
+                "years": "string"
+            }}
+        ],
+        "projects": [
+            {{
+                "project_name": "string",
+                "tech_stack": ["list", "of", "strings"],
+                "description": "string"
+            }}
+        ],
+        "education": [
+            {{
+                "institution": "string",
+                "degree": "string",
+                "years": "string",
+                "cgpa": "string"  # Can be CGPA, marks, or percentage
+            }}
+        ]
+    }}
+
+    Example:
+    If the education section in the resume says:
+    - "B.Tech in Computer Science from XYZ University, 2018-2022, 8.5 CGPA"
+    - "Higher Secondary School, ABC School, 85%"
+    
+    It should be extracted as:
+    ```json
+    "education": [
         {{
-            "name": "string",
-            "skills": ["list", "of", "strings"],
-            "experience": [
-                {{
-                    "company": "string",
-                    "role": "string",
-                    "years": "string"
-                }}
-            ],
-            "projects": [
-                {{
-                    "project_name": "string",
-                    "tech_stack": ["list", "of", "strings"],
-                    "description": "string"
-                }}
-            ],
-            "education": [
-                {{
-                    "institution": "string",
-                    "degree": "string",
-                    "years": "string",
-                    "cgpa": "string"
-                }}
-            ]
+            "institution": "XYZ University",
+            "degree": "B.Tech in Computer Science",
+            "years": "2018-2022",
+            "cgpa": "8.5"
+        }},
+        {{
+            "institution": "ABC School",
+            "degree": "Higher Secondary",
+            "years": "N/A",
+            "cgpa": "85%"
         }}
-
-        Now analyze this resume and return the JSON:
-        """,
-        input_variables=['text']
-    )
+    ]
+    ```
+    
+    Now analyze this resume and return the JSON:
+    """
+)
 
     chain = prompt | model | parser
     
