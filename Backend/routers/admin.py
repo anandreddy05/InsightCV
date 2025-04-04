@@ -48,14 +48,13 @@ async def admin_read_resumes_by_id(user_id:int,db:db_dependency,user:user_depend
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="No Resume found")
     return resume_model
 
-@router.delete("/resumes/{user_id}",dependencies=[Depends(role_required(UserRole.admin))])
-async def admin_delete_resume(db:db_dependency,user:user_dependency,user_id: int):
-    resume_model = db.query(Resume).filter(Resume.user_id == user_id).first()
+@router.delete("/resumes/{resume_id}",dependencies=[Depends(role_required(UserRole.admin))])
+async def admin_delete_resume(db:db_dependency,user:user_dependency,resume_id: int):
+    resume_model = db.query(Resume).filter(Resume.id == resume_id).first()
     if not resume_model:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="No Resume found")
     db.delete(resume_model)
     db.commit()
     return "Deleted Successfully"
-
 #anand@gmail.com
 #test@1234!
