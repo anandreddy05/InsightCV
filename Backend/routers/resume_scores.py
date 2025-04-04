@@ -5,7 +5,7 @@ from fastapi import Depends,APIRouter,HTTPException,status
 from typing import Annotated
 from sqlalchemy.orm import Session
 from resume_scores.llm_scores import llm_score
-from InsightCV.Backend.resume_scores.hybrid_scoring import hybrid_match_score
+from resume_scores.hybrid_scoring import hybrid_match_score
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
