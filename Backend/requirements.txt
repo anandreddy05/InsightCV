@@ -9,6 +9,7 @@ python-multipart
 python-jose[cryptography]
 pypdf
 langchain
+langchain_chroma
 langchain_community
 langchain_huggingface
 langchain_ollama
@@ -19,3 +20,5 @@ faiss-cpu
 rank-bm25
 sentence-transformers
 fastapi[all]
+nltk
+langchain_groq
