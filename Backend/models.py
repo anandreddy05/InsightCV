@@ -1,5 +1,5 @@
 from database import Base
-from sqlalchemy import Column, Float, Integer, ForeignKey, String, Text, Enum as SQLEnum
+from sqlalchemy import Column, Float, Integer, ForeignKey, String, Text, Enum as SQLEnum,JSON
 from sqlalchemy.orm import relationship
 import enum
 
@@ -22,7 +22,6 @@ class User(Base):
     
     resumes = relationship("Resume", back_populates="user", cascade="all, delete")
 
-## Resume Table ##
 class Resume(Base):
     __tablename__ = "resumes"
     
@@ -30,10 +29,11 @@ class Resume(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     file_path = Column(String, nullable=False) 
     extracted_text = Column(Text) 
-    skills = Column(Text)
-    experience = Column(Text)
-    projects = Column(Text)
-    education = Column(Text)
+    skills = Column(JSON)   
+    experience = Column(JSON)   
+    projects = Column(JSON)   
+    education = Column(JSON)  
+
     user = relationship("User", back_populates="resumes")
     match_results = relationship("JobMatchResult", back_populates="resume", cascade="all, delete")
 
@@ -45,9 +45,10 @@ class JobDescription(Base):
     job_title = Column(String, nullable=False)
     company_name = Column(String)
     description = Column(Text, nullable=False)
-    required_skills = Column(Text)
-    
+    required_skills = Column(JSON)  
+
     match_results = relationship("JobMatchResult", back_populates="job", cascade="all, delete")
+
 
 ## JobMatchScore Results Of AI Model ##
 class JobMatchResult(Base):
