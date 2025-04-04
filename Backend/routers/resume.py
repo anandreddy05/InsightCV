@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field
 import json
 import os
 from datetime import datetime
-import uuid
 
 router = APIRouter(
     prefix="/resume",
@@ -17,6 +16,8 @@ router = APIRouter(
 )
 
 db_dependency = Annotated[Session, Depends(get_db)]
+
+UPLOAD_DIR = "uploaded/resumes"  
 
 class ExperienceItem(BaseModel):
     company: str
@@ -37,7 +38,7 @@ class EducationItem(BaseModel):
 class ResumeResponse(BaseModel):
     user_id: int
     file_path: str
-    extracted_text: str = Field(..., description="Name extracted from resume")
+    extracted_text: str
     skills: List[str] = Field(default_factory=list)
     experience: List[ExperienceItem] = Field(default_factory=list)
     projects: List[ProjectItem] = Field(default_factory=list)
@@ -52,39 +53,39 @@ async def upload_resume(
     file: UploadFile = File(...)
 ):
     try:
-        # Ensure upload directory exists
-        os.makedirs("uploads/resumes", exist_ok=True)
-        
-        # Extract data from resume
         extracted_data = extract_resume_data(file)
-        
         if not extracted_data:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to extract resume data"
-            )
+            raise HTTPException(status_code=400, detail="Failed to extract resume data")
 
-        # Generate unique filename
-        file_ext = os.path.splitext(file.filename)[1]
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
-        file_path = os.path.join("uploads/resumes", unique_filename)
-        
-        # Create resume record with JSON-converted fields
         resume = Resume(
             user_id=user.id,
-            file_path=file_path,
+            file_path="",  
             extracted_text=extracted_data.get("name", ""),
             skills=json.dumps(extracted_data.get("skills", [])),
             experience=json.dumps(extracted_data.get("experience", [])),
             projects=json.dumps(extracted_data.get("projects", [])),
             education=json.dumps(extracted_data.get("education", []))
         )
-        
+
         db.add(resume)
+        db.commit()
+        db.refresh(resume)  
+
+        #  uniquee file path using resume.id and user_name
+        os.makedirs(UPLOAD_DIR, exist_ok=True)  
+        file_ext = os.path.splitext(file.filename)[1]  
+        unique_filename = f"resume_{resume.id}_{user.full_name}{file_ext}"  
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+        #  Save file with  unique file name
+        with open(file_path, "wb") as buffer:
+            buffer.write(file.file.read())
+
+        #  Update the database with the  file path
+        resume.file_path = file_path
         db.commit()
         db.refresh(resume)
 
-        # Convert JSON strings back to Python objects for the response
         return ResumeResponse(
             user_id=resume.user_id,
             file_path=resume.file_path,
@@ -97,7 +98,4 @@ async def upload_resume(
 
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing resume: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error processing resume: {str(e)}")
