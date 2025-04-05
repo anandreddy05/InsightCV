@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from database import get_db
 from models import User, UserRole,Resume
 from .auth import  get_current_user
-from .users import role_required
+from .login import role_required
 
 router = APIRouter(
     prefix="/admin",

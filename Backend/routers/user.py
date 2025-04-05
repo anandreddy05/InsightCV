@@ -2,18 +2,19 @@ from fastapi import APIRouter, HTTPException, File, UploadFile, Depends, status
 from sqlalchemy.orm import Session
 from database import get_db
 from llm_models.extractor import extract_resume_data
-from .users import get_current_user
+from .login import get_current_user
 from typing import Annotated, List, Dict, Optional
 from models import Resume, User, UserRole
 from pydantic import BaseModel, ConfigDict, Field
 import json
 import os
 from datetime import datetime
-from .users import role_required
+from .login import role_required
+from resume_scores.llm_scores import llm_score_user
 
 router = APIRouter(
-    prefix="/resume",
-    tags=["resume"]
+    prefix="/user",
+    tags=["user"]
 )
 
 db_dependency = Annotated[Session, Depends(get_db)]
@@ -139,3 +140,18 @@ async def delete_resume(
 
     db.delete(resume_instance)
     db.commit()
+    
+# User Scoring
+class Description(BaseModel):
+    job_description: str
+
+# user
+@router.post("/get_score/{resume_id}")
+async def score(db:db_dependency,desc:Description,resume_id:int):
+    resume_instance = db.query(Resume).filter(Resume.id == resume_id).first()
+    if not resume_instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="No resume found")
+    llm_result = llm_score_user(job_desc=desc.job_description,resume_id=resume_id,db=db)
+    return {"resume_id":resume_id,
+            "llm_result":llm_result
+            }

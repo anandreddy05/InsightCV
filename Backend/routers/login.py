@@ -46,7 +46,7 @@ async def register_user(db: db_dependency, user_data: UserCreate):
         email=user_data.email,
         phone_number=user_data.phone_number,
         hashed_password=bcrypt_context.hash(user_data.password),
-        role=user_data.role  # Assign the role dynamically
+        role=user_data.role  
     )
     db.add(new_user)
     db.commit()
@@ -72,19 +72,19 @@ def login(
 @router.put("/change-password")
 def change_password(
     db: db_dependency,
-    current_user: user_dependency,  
+    current_user: user_dependency,
     new_password: str
 ):
     user_model = db.query(User).filter(User.id == current_user.id).first()
     if not user_model:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    new_hashed_password = bcrypt_context.hash(new_password)
-    user_model.hashed_password = new_hashed_password
+    
+    if bcrypt_context.verify(new_password, user_model.hashed_password):
+        raise HTTPException(status_code=400, detail="New password must be different from the old password")
+
+    user_model.hashed_password = bcrypt_context.hash(new_password)
     db.commit()
     db.refresh(user_model)
 
     return {"message": "Password updated successfully"}
 
-# @router.get("/recruiter", dependencies=[Depends(role_required(UserRole.recruiter))])
-# async def recruiter():
-#     return {"message": "Welcome Recruiter"}

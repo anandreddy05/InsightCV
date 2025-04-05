@@ -22,3 +22,5 @@ sentence-transformers
 fastapi[all]
 nltk
 langchain_groq
+pytest
+pytest-asyncio
